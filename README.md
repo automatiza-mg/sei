@@ -1,9 +1,21 @@
 # WSSEI
 
-Client Go para o módulo [WSSEI](https://pengovbr.github.io/mod-wssei/#/) do
-SEI (Sistema Eletrônico de Informações), usado para automatizar processos,
-documentos, blocos de assinatura e demais operações do SEI. Projetado para
-ser compartilhado entre múltiplos projetos.
+Client Go para o [SEI](https://www.gov.br/gestao/pt-br/assuntos/sei) (Sistema
+Eletrônico de Informações), cobrindo as três interfaces disponíveis:
+
+- [`wssei`](./wssei) — módulo [WSSEI](https://pengovbr.github.io/mod-wssei/#/)
+  (REST), autenticado por usuário e senha. É a interface principal, usada
+  para processos, documentos, blocos de assinatura, marcadores, etc.
+- [`seiws`](./seiws) — API SOAP legada (`SeiWS.php`), autenticada por sigla
+  de sistema e token de serviço. Usada apenas para operações que ainda não
+  têm equivalente no WSSEI.
+- [`scraper`](./scraper) — extração de dados diretamente das páginas HTML
+  do SEI, para informações que não são expostas por nenhuma das APIs (ex:
+  lista de órgãos na tela de login).
+- [`soap`](./soap) — tipos auxiliares para serializar e deserializar
+  envelopes SOAP, compartilhados pelo `seiws`.
+
+Projetado para ser compartilhado entre múltiplos projetos.
 
 ## Instalação
 
@@ -13,11 +25,11 @@ go get github.com/automatiza-mg/WSSEI
 
 Requer Go 1.25 ou superior.
 
-## Uso
+## wssei — módulo WSSEI (REST)
 
-O client autentica com usuário e senha uma única vez e reaproveita o token
-gerado em cada requisição, renovando-o automaticamente quando o servidor
-responde 401/403.
+Autentica com usuário e senha uma única vez e reaproveita o token gerado em
+cada requisição, renovando-o automaticamente quando o servidor responde
+401/403.
 
 ```go
 package main
@@ -28,7 +40,7 @@ import (
     "os"
     "strconv"
 
-    wssei "github.com/automatiza-mg/WSSEI"
+    "github.com/automatiza-mg/WSSEI/wssei"
 )
 
 func main() {
@@ -99,20 +111,18 @@ err = client.MarcarProcesso(ctx, protocolo, wssei.MarcadorProcessoParams{
 })
 ```
 
-## Configuração
+### Configuração
 
-### Config
+O client é configurado com uma struct `wssei.Config`:
 
-O client é configurado com uma struct [`Config`](client.go):
-
-| Campo             | Descrição                                                                   |
-| ----------------- | --------------------------------------------------------------------------- |
-| `BaseURL`         | URL base do SEI (ex: `https://www.sei.mg.gov.br`).                          |
-| `Usuario`         | Login usado na autenticação.                                                |
-| `Senha`           | Senha usada na autenticação.                                                |
-| `Orgao`           | Id do órgão da autenticação.                                                |
-| `Plataforma`      | Identificador da plataforma dona das credenciais (ex: `whatsapp`).          |
-| `PlataformaID`    | Identificador do usuário dentro da plataforma (ex: número do WhatsApp).     |
+| Campo             | Descrição                                                                     |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `BaseURL`         | URL base do SEI (ex: `https://www.sei.mg.gov.br`).                            |
+| `Usuario`         | Login usado na autenticação.                                                  |
+| `Senha`           | Senha usada na autenticação.                                                  |
+| `Orgao`           | Id do órgão da autenticação.                                                  |
+| `Plataforma`      | Identificador da plataforma dona das credenciais (ex: `whatsapp`).            |
+| `PlataformaID`    | Identificador do usuário dentro da plataforma (ex: número do WhatsApp).       |
 | `OnAuthenticated` | Callback opcional, invocado após cada autenticação bem-sucedida (ver abaixo). |
 
 ### AuthCallback
@@ -131,14 +141,14 @@ cfg.OnAuthenticated = func(ctx context.Context, plataforma, plataformaID string,
 ### Autenticação isolada
 
 Se você precisa apenas autenticar (sem executar chamadas subsequentes), use
-[`Auth`](auth.go) diretamente:
+`wssei.Auth` diretamente:
 
 ```go
 auth := wssei.NewAuth(baseURL)
 resp, err := auth.Autenticar(ctx, usuario, senha, orgao)
 ```
 
-## Envelope
+### Envelope
 
 Todas as respostas do WSSEI seguem o formato:
 
@@ -151,17 +161,97 @@ Todas as respostas do WSSEI seguem o formato:
 }
 ```
 
-Os métodos do [`Client`](client.go) já extraem `data` e `total` para o
-chamador, transformando `sucesso: false` em erro. O tipo genérico
-[`Envelope[T]`](client.go) é exportado para uso em cenários onde a resposta
-bruta é necessária.
+Os métodos do `Client` já extraem `data` e `total` para o chamador,
+transformando `sucesso: false` em erro. O tipo genérico `wssei.Envelope[T]`
+é exportado para uso em cenários onde a resposta bruta é necessária.
 
-## Compatibilidade Latin-1
+### Compatibilidade Latin-1
 
 Alguns endpoints do WSSEI (PHP legado) interpretam campos específicos como
-Latin-1 mesmo recebendo JSON UTF-8 — o exemplo mais conhecido é o `cargo` em
-assinaturas. O client transcodifica automaticamente esses campos usando
-`jsonStringLatin1`, garantindo que acentos sejam aceitos pelo servidor.
+Latin-1 mesmo recebendo JSON UTF-8 — o exemplo mais conhecido é o `cargo`
+em assinaturas. O client transcodifica automaticamente esses campos,
+garantindo que acentos sejam aceitos pelo servidor.
+
+## seiws — API SOAP legada
+
+Autentica com sigla do sistema e token de serviço (credenciais fixas por
+aplicação, não por usuário). Usado apenas para operações ainda não expostas
+pelo WSSEI.
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/automatiza-mg/WSSEI/seiws"
+)
+
+func main() {
+    client := seiws.NewClient(seiws.Config{
+        URL:                  os.Getenv("SEI_WS_URL"),
+        SiglaSistema:         os.Getenv("SEI_SIGLA_SISTEMA"),
+        IdentificacaoServico: os.Getenv("SEI_IDENTIFICACAO_SERVICO"),
+    })
+
+    ctx := context.Background()
+
+    resp, err := client.ConsultarDocumento(ctx, "0000001")
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println(resp.Parametros.DocumentoFormatado)
+}
+```
+
+Erros de Fault SOAP são retornados como `*soap.Error`, que carrega o status
+HTTP e o envelope de Fault decodificado.
+
+## scraper — extração via HTML
+
+Para dados que não estão em nenhuma API. Hoje suporta apenas a listagem de
+órgãos na tela de login.
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/automatiza-mg/WSSEI/scraper"
+)
+
+func main() {
+    s := scraper.NewScraper(os.Getenv("SEI_BASE_URL"))
+
+    orgaos, err := s.ListOrgaos(context.Background())
+    if err != nil {
+        panic(err)
+    }
+
+    for _, o := range orgaos {
+        fmt.Printf("%d\t%s\n", o.ID, o.Nome)
+    }
+}
+```
+
+## soap — envelopes SOAP
+
+Tipos auxiliares (`Envelope`, `Body`, `Fault`, `Error`) usados internamente
+por `seiws`. Não é necessário usar diretamente, exceto para inspecionar
+detalhes de um Fault:
+
+```go
+var se *soap.Error
+if errors.As(err, &se) {
+    fmt.Println(se.Status, se.Fault.Body.Content.Message)
+}
+```
 
 ## Referência
 
