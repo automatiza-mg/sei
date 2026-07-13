@@ -19,8 +19,10 @@ import (
 )
 
 // AuthCallback é invocado pelo [Client] após cada autenticação bem-sucedida
-// no WSSEI (inclusive em renovações por token expirado).
-type AuthCallback func(ctx context.Context, plataforma, plataformaID string, resp *AuthResponse) error
+// no WSSEI, incluindo as renovações automáticas por token expirado. Recebe o
+// [*AuthResponse] retornado pelo endpoint POST /autenticar, permitindo
+// persistir o token ou observar o resultado do login.
+type AuthCallback func(ctx context.Context, resp *AuthResponse) error
 
 // O caminho da API do módulo WSSEI relativo à URL base do SEI.
 const apiBasePath = "/sei/modulos/wssei/controlador_ws.php/api/v2"
@@ -58,10 +60,6 @@ type Config struct {
 	Senha string
 	// Orgao é o id do órgão da autenticação.
 	Orgao int
-	// Plataforma e PlataformaID identificam o usuário do chatbot dono destas
-	// credenciais.
-	Plataforma   string
-	PlataformaID string
 	// OnAuthenticated, se não nulo, é chamado pelo [Client] após cada
 	// autenticação bem-sucedida no WSSEI. Ver [AuthCallback].
 	OnAuthenticated AuthCallback
@@ -91,8 +89,6 @@ func NewClient(cfg Config) *Client {
 				usuario:         cfg.Usuario,
 				senha:           cfg.Senha,
 				orgao:           cfg.Orgao,
-				plataforma:      cfg.Plataforma,
-				plataformaID:    cfg.PlataformaID,
 				onAuthenticated: cfg.OnAuthenticated,
 			},
 		},

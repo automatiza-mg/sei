@@ -121,8 +121,6 @@ O client é configurado com uma struct `wssei.Config`:
 | `Usuario`         | Login usado na autenticação.                                                  |
 | `Senha`           | Senha usada na autenticação.                                                  |
 | `Orgao`           | Id do órgão da autenticação.                                                  |
-| `Plataforma`      | Identificador da plataforma dona das credenciais (ex: `whatsapp`).            |
-| `PlataformaID`    | Identificador do usuário dentro da plataforma (ex: número do WhatsApp).       |
 | `OnAuthenticated` | Callback opcional, invocado após cada autenticação bem-sucedida (ver abaixo). |
 
 ### AuthCallback
@@ -133,8 +131,8 @@ perfis do usuário autenticado. É chamado no login inicial e a cada renovação
 automática do token.
 
 ```go
-cfg.OnAuthenticated = func(ctx context.Context, plataforma, plataformaID string, resp *wssei.AuthResponse) error {
-    return cache.SaveToken(ctx, plataformaID, resp.Token)
+cfg.OnAuthenticated = func(ctx context.Context, resp *wssei.AuthResponse) error {
+    return cache.SaveToken(ctx, resp.Token)
 }
 ```
 

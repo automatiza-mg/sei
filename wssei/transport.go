@@ -18,15 +18,10 @@ const tokenHeader = "token"
 // automaticamente, repetindo a requisição original uma única vez.
 type tokenTransport struct {
 	http.RoundTripper
-	auth    *Auth
-	usuario string
-	senha   string
-	orgao   int
-
-	// plataforma e plataformaID identificam o usuário do chatbot dono
-	// destas credenciais.
-	plataforma      string
-	plataformaID    string
+	auth            *Auth
+	usuario         string
+	senha           string
+	orgao           int
 	onAuthenticated AuthCallback
 
 	mu          sync.Mutex
@@ -111,7 +106,7 @@ func (t *tokenTransport) authenticateLocked(ctx context.Context) (string, error)
 
 
 	if t.onAuthenticated != nil {
-		_ = t.onAuthenticated(ctx, t.plataforma, t.plataformaID, auth)
+		_ = t.onAuthenticated(ctx, auth)
 	}
 
 	return auth.Token, nil

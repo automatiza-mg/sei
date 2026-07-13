@@ -190,23 +190,12 @@ func TestTransport_InvokesOnAuthenticated(t *testing.T) {
 	})
 
 	var calls int32
-	type capture struct {
-		Plataforma   string
-		PlataformaID string
-		Token        string
-	}
-	var captured []capture
+	var tokens []string
 
 	tr := newTransport(srv.URL)
-	tr.plataforma = "whatsapp"
-	tr.plataformaID = "5531999999999"
-	tr.onAuthenticated = func(ctx context.Context, plataforma, plataformaID string, resp *AuthResponse) error {
+	tr.onAuthenticated = func(ctx context.Context, resp *AuthResponse) error {
 		atomic.AddInt32(&calls, 1)
-		captured = append(captured, capture{
-			Plataforma:   plataforma,
-			PlataformaID: plataformaID,
-			Token:        resp.Token,
-		})
+		tokens = append(tokens, resp.Token)
 		return nil
 	}
 
@@ -220,16 +209,8 @@ func TestTransport_InvokesOnAuthenticated(t *testing.T) {
 	if got := atomic.LoadInt32(&calls); got != 2 {
 		t.Fatalf("callback executado %d vezes, esperado 2 (login inicial + refresh)", got)
 	}
-	if len(captured) != 2 {
-		t.Fatalf("captured = %d, esperado 2", len(captured))
-	}
-	for i, c := range captured {
-		if c.Plataforma != "whatsapp" || c.PlataformaID != "5531999999999" {
-			t.Errorf("call %d: plataforma/id = %q/%q, esperado whatsapp/5531999999999", i, c.Plataforma, c.PlataformaID)
-		}
-	}
-	if captured[0].Token != "token-1" || captured[1].Token != "token-2" {
-		t.Errorf("tokens capturados = %v, esperado [token-1 token-2]", []string{captured[0].Token, captured[1].Token})
+	if len(tokens) != 2 || tokens[0] != "token-1" || tokens[1] != "token-2" {
+		t.Errorf("tokens capturados = %v, esperado [token-1 token-2]", tokens)
 	}
 }
 
@@ -243,7 +224,7 @@ func TestTransport_OnAuthenticatedErrorDoesNotBreakRequest(t *testing.T) {
 	})
 
 	tr := newTransport(srv.URL)
-	tr.onAuthenticated = func(ctx context.Context, plataforma, plataformaID string, resp *AuthResponse) error {
+	tr.onAuthenticated = func(ctx context.Context, resp *AuthResponse) error {
 		return http.ErrHandlerTimeout // qualquer erro
 	}
 
