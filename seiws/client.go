@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/automatiza-mg/WSSEI/soap"
+	"github.com/automatiza-mg/sei/soap"
 )
 
 // Config contém as credenciais e endpoint necessários para acessar a API SOAP

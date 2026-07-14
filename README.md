@@ -20,7 +20,7 @@ Projetado para ser compartilhado entre múltiplos projetos.
 ## Instalação
 
 ```bash
-go get github.com/automatiza-mg/WSSEI
+go get github.com/automatiza-mg/sei
 ```
 
 Requer Go 1.25 ou superior.
@@ -40,7 +40,7 @@ import (
     "os"
     "strconv"
 
-    "github.com/automatiza-mg/WSSEI/wssei"
+    "github.com/automatiza-mg/sei/wssei"
 )
 
 func main() {
@@ -184,7 +184,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/automatiza-mg/WSSEI/seiws"
+    "github.com/automatiza-mg/sei/seiws"
 )
 
 func main() {
@@ -221,7 +221,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/automatiza-mg/WSSEI/scraper"
+    "github.com/automatiza-mg/sei/scraper"
 )
 
 func main() {

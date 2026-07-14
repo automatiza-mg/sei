@@ -1,4 +1,4 @@
-module github.com/automatiza-mg/WSSEI
+module github.com/automatiza-mg/sei
 
 go 1.25.0
 
