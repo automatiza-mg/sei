@@ -18,8 +18,7 @@ import (
 // do SEI. Estas credenciais são fixas por aplicação (servidor) e não por
 // usuário.
 type Config struct {
-	// URL é o endpoint completo do SeiWS.php (ex.:
-	// https://www.sei.mg.gov.br/sei/ws/SeiWS.php).
+	// URL é o endpoint completo do SeiWS.php (ex.: https://www.sei.mg.gov.br/sei/ws/SeiWS.php).
 	URL string
 	// SiglaSistema é o identificador do sistema chamador cadastrado no SEI.
 	SiglaSistema string
@@ -43,9 +42,10 @@ func NewClient(cfg Config) *Client {
 }
 
 // Parametros é o wrapper XML usado pelas respostas SOAP do SEI que retornam
-// listas (ex.: parametros/item).
+// listas de elementos sob a tag item (ex.: parametros/item ou
+// UnidadesProcedimentoAberto/item).
 type Parametros[T any] struct {
-	Items []T `xml:"item"`
+	Items []T `xml:"item" json:"items"`
 }
 
 // makeSoapError decodifica o corpo da resposta como um envelope SOAP de Fault

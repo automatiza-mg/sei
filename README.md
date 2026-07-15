@@ -1,4 +1,4 @@
-# WSSEI
+# SEI
 
 Client Go para o [SEI](https://www.gov.br/gestao/pt-br/assuntos/sei) (Sistema
 Eletrônico de Informações), cobrindo as três interfaces disponíveis:
@@ -205,13 +205,36 @@ func main() {
 }
 ```
 
+### Processos
+
+```go
+// Consulta os metadados de um processo (inclui andamento de geração e as
+// unidades onde o processo está aberto).
+proc, err := client.ConsultarProcedimento(ctx, "1234567.000123/2024-00")
+fmt.Println(proc.Parametros.ProcedimentoFormatado)
+
+// Movimenta um processo da unidade de origem para uma ou mais unidades de
+// destino.
+_, err = client.EnviarProcesso(ctx, protocolo, unidadeOrigem, []string{unidadeDestino})
+```
+
+### Unidades
+
+```go
+unidades, err := client.ListarUnidades(ctx)
+for _, u := range unidades.Parametros.Items {
+    fmt.Println(u.IDUnidade, u.Sigla)
+}
+```
+
 Erros de Fault SOAP são retornados como `*soap.Error`, que carrega o status
 HTTP e o envelope de Fault decodificado.
 
 ## scraper — extração via HTML
 
-Para dados que não estão em nenhuma API. Hoje suporta apenas a listagem de
-órgãos na tela de login.
+Para dados que não estão em nenhuma API. Suporta a listagem de órgãos na tela
+de login, o download do PDF de um processo e a listagem de documentos na
+página de acesso externo.
 
 ```go
 package main
@@ -235,6 +258,26 @@ func main() {
     for _, o := range orgaos {
         fmt.Printf("%d\t%s\n", o.ID, o.Nome)
     }
+}
+```
+
+### Download do PDF de um processo
+
+```go
+body, err := s.DownloadProcedimento(ctx, linkAcessoExterno)
+if err != nil {
+    panic(err)
+}
+defer body.Close()
+// body é o conteúdo do PDF.
+```
+
+### Listar documentos (acesso externo)
+
+```go
+docs, err := s.ListarDocumentos(ctx, linkAcessoExterno)
+for _, d := range docs {
+    fmt.Println(d.Numero, d.Link)
 }
 ```
 

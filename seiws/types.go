@@ -8,6 +8,33 @@ type Serie struct {
 	Nome    string `xml:"Nome" json:"nome"`
 }
 
+// Unidade é uma unidade organizacional do SEI.
+type Unidade struct {
+	IDUnidade       string `xml:"IdUnidade" json:"id_unidade"`
+	Sigla           string `xml:"Sigla,omitempty" json:"sigla"`
+	Descricao       string `xml:"Descricao,omitempty" json:"descricao"`
+	SinProtocolo    string `xml:"SinProtocolo,omitempty" json:"-"`
+	SinArquivamento string `xml:"SinArquivamento,omitempty" json:"-"`
+	SinOuvidoria    string `xml:"SinOuvidoria,omitempty" json:"-"`
+}
+
+// Usuario é um usuário do SEI.
+type Usuario struct {
+	IDUsuario string `xml:"IdUsuario" json:"id_usuario"`
+	Sigla     string `xml:"Sigla" json:"sigla"`
+	Nome      string `xml:"Nome" json:"nome"`
+}
+
+// Andamento é um andamento (movimentação) registrado em um processo do SEI.
+type Andamento struct {
+	IDAndamento    string  `xml:"IdAndamento" json:"id_andamento,omitempty"`
+	IDTarefa       string  `xml:"IdTarefa" json:"id_tarefa,omitempty"`
+	IDTarefaModulo string  `xml:"IdTarefaModulo" json:"id_tarefa_modulo,omitempty"`
+	Descricao      string  `xml:"Descricao" json:"descricao"`
+	DataHora       string  `xml:"DataHora" json:"data_hora"`
+	Unidade        Unidade `xml:"Unidade" json:"unidade"`
+}
+
 // UnidadeElaboradora é a unidade do SEI responsável pela elaboração do
 // documento.
 type UnidadeElaboradora struct {
