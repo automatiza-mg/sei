@@ -463,6 +463,163 @@ func (c *Client) PesquisarAssunto(ctx context.Context, params PesquisarAssuntoPa
 	return env.Data, total, nil
 }
 
+// PesquisarProcessoResult representa um processo retornado pela pesquisa geral.
+type PesquisarProcessoResult struct {
+	IDProcedimento                 string                            `json:"idProcedimento"`
+	IDTipoProcedimento             string                            `json:"idTipoProcedimento"`
+	NomeTipoProcedimento           string                            `json:"nomeTipoProcedimento"`
+	SiglaUnidadeGeradora           string                            `json:"siglaUnidadeGeradora"`
+	IDUnidadeGeradora              string                            `json:"idUnidadeGeradora"`
+	ProtocoloFormatadoProcedimento string                            `json:"protocoloFormatadoProcedimento"`
+	IDUsuarioGerador               string                            `json:"idUsuarioGerador"`
+	NomeUsuarioGerador             string                            `json:"nomeUsuarioGerador"`
+	SiglaUsuarioGerador            string                            `json:"siglaUsuarioGerador"`
+	DataGeracao                    string                            `json:"dataGeracao"`
+	Documento                      Object[PesquisarProcessoDocumento] `json:"documento"`
+}
+
+// PesquisarProcessoDocumento representa o documento associado ao resultado
+// da pesquisa geral de processos.
+type PesquisarProcessoDocumento struct {
+	IDDocumento                 string `json:"idDocumento"`
+	IDSerieDocumento            string `json:"idSerieDocumento"`
+	NomeSerieDocumento          string `json:"nomeSerieDocumento"`
+	ProtocoloFormatadoDocumento string `json:"protocoloFormatadoDocumento"`
+	NumeroDocumento             string `json:"numeroDocumento"`
+	StaDocumento                string `json:"staDocumento"`
+	DtaGeracao                  string `json:"dtaGeracao"`
+	DadosAnexo                  any    `json:"dadosAnexo"`
+}
+
+// StaTipoData representa o tipo de busca por data em [PesquisarProcessoParams].
+type StaTipoData int
+
+// Tipos de busca por data aceitos pelo endpoint de pesquisa geral de processos.
+const (
+	// StaTipoDataPeriodo habilita o período informado em DataInicio e DataFim.
+	StaTipoDataPeriodo StaTipoData = 0
+	// StaTipoData30Dias filtra os últimos 30 dias.
+	StaTipoData30Dias StaTipoData = 30
+	// StaTipoData60Dias filtra os últimos 60 dias.
+	StaTipoData60Dias StaTipoData = 60
+)
+
+// PesquisarProcessoParams reúne os parâmetros opcionais de [Client.PesquisarProcesso].
+//
+// Campos com valor zero (0 ou "") são omitidos da requisição, com exceção
+// de StaTipoData, que é incluído sempre que DataInicio e DataFim são informados.
+type PesquisarProcessoParams struct {
+	// Limit é o limite de registros da paginação.
+	Limit int
+	// Start é a página de início da paginação.
+	Start int
+	// Grupo é o id do grupo de acompanhamento.
+	Grupo int
+	// PalavrasChave são as palavras-chave usadas na pesquisa.
+	PalavrasChave string
+	// Descricao é o texto de descrição a ser pesquisado.
+	Descricao string
+	// StaTipoData define o tipo de busca por data. É obrigatório quando
+	// DataInicio e DataFim são informados.
+	StaTipoData StaTipoData
+	// DataInicio é a data de início do período (formato dd/mm/aaaa).
+	DataInicio string
+	// DataFim é a data de término do período (formato dd/mm/aaaa).
+	DataFim string
+	// IDUnidadeGeradora é o id da unidade geradora.
+	IDUnidadeGeradora int
+	// IDAssunto é o id do assunto.
+	IDAssunto int
+	// BuscaRapida é o texto para comportamento igual à busca rápida
+	// (não deve ser combinado com os outros filtros).
+	BuscaRapida string
+}
+
+// Converte os parâmetros em [url.Values], omitindo os campos zerados.
+func (p PesquisarProcessoParams) values() url.Values {
+	q := make(url.Values)
+	if p.Limit != 0 {
+		q.Set("limit", strconv.Itoa(p.Limit))
+	}
+	if p.Start != 0 {
+		q.Set("start", strconv.Itoa(p.Start))
+	}
+	if p.Grupo != 0 {
+		q.Set("grupo", strconv.Itoa(p.Grupo))
+	}
+	if p.PalavrasChave != "" {
+		q.Set("palavrasChave", p.PalavrasChave)
+	}
+	if p.Descricao != "" {
+		q.Set("descricao", p.Descricao)
+	}
+	if p.DataInicio != "" {
+		q.Set("dataInicio", p.DataInicio)
+	}
+	if p.DataFim != "" {
+		q.Set("dataFim", p.DataFim)
+	}
+	if p.DataInicio != "" || p.DataFim != "" {
+		q.Set("staTipoData", strconv.Itoa(int(p.StaTipoData)))
+	}
+	if p.IDUnidadeGeradora != 0 {
+		q.Set("idUnidadeGeradora", strconv.Itoa(p.IDUnidadeGeradora))
+	}
+	if p.IDAssunto != 0 {
+		q.Set("idAssunto", strconv.Itoa(p.IDAssunto))
+	}
+	if p.BuscaRapida != "" {
+		q.Set("buscaRapida", p.BuscaRapida)
+	}
+	return q
+}
+
+// PesquisarProcesso retorna a lista de processos encontrados e o total de
+// registros, aplicando os filtros e a paginação informados em params.
+func (c *Client) PesquisarProcesso(ctx context.Context, params PesquisarProcessoParams) ([]PesquisarProcessoResult, int, error) {
+	endpoint := c.endpoint + "/processo/pesquisar"
+	if q := params.values().Encode(); q != "" {
+		endpoint += "?" + q
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, 0, fmt.Errorf("new request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("http do: %w", err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, 0, fmt.Errorf("read body: %w", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, 0, fmt.Errorf("unexpected status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var env Envelope[[]PesquisarProcessoResult]
+	if err := json.Unmarshal(body, &env); err != nil {
+		return nil, 0, fmt.Errorf("json unmarshal: %w", err)
+	}
+
+	if !env.Sucesso {
+		return nil, 0, fmt.Errorf("invalid response: %s", env.Mensagem)
+	}
+
+	total, err := env.getTotal()
+	if err != nil {
+		return nil, 0, fmt.Errorf("parse total %q: %w", env.Total, err)
+	}
+
+	return env.Data, total, nil
+}
+
 // TipoProcessoResult representa um tipo de processo retornado pela listagem.
 //
 // Este endpoint está marcado como deprecated pela API e pode ser removido

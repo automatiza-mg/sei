@@ -71,6 +71,12 @@ processos, total, err := client.ListarProcessos(ctx, wssei.ListarProcessosParams
     Limit: 10,
     Start: 0,
 })
+
+// Pesquisa geral com filtros avançados.
+resultados, total, err := client.PesquisarProcesso(ctx, wssei.PesquisarProcessoParams{
+    PalavrasChave: "contrato",
+    Limit:         10,
+})
 ```
 
 ### Documentos
