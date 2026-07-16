@@ -3,11 +3,16 @@ package wssei
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"sync"
 )
 
 // Header que o WSSEI espera o token de autenticação.
 const tokenHeader = "token"
+
+// Header usado pelo WSSEI para selecionar a unidade atual do usuário no
+// contexto da requisição. Ver TokenValidationMiddleware do mod-wssei.
+const unidadeHeader = "unidade"
 
 // Implementação de [http.RoundTripper] que autentica no
 // WSSEI usando um [Auth], injeta o token resultante no header de toda
@@ -26,6 +31,22 @@ type tokenTransport struct {
 
 	mu          sync.Mutex
 	cachedToken string
+	unidade     int
+}
+
+// setUnidade registra a unidade a ser enviada no header de cada requisição.
+// Passe 0 para desativar.
+func (t *tokenTransport) setUnidade(unidade int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.unidade = unidade
+}
+
+// getUnidade retorna a unidade atualmente registrada.
+func (t *tokenTransport) getUnidade() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.unidade
 }
 
 func (t *tokenTransport) next() http.RoundTripper {
@@ -63,11 +84,14 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return res, nil
 }
 
-// do clona a requisição, injeta o header de token e a encaminha, sem mutar o
-// request original.
+// do clona a requisição, injeta os headers de token e (quando aplicável)
+// de unidade, e a encaminha, sem mutar o request original.
 func (t *tokenTransport) do(req *http.Request, tok string) (*http.Response, error) {
 	clone := req.Clone(req.Context())
 	clone.Header.Set(tokenHeader, tok)
+	if u := t.getUnidade(); u > 0 {
+		clone.Header.Set(unidadeHeader, strconv.Itoa(u))
+	}
 	return t.next().RoundTrip(clone)
 }
 

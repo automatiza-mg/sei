@@ -69,8 +69,9 @@ type Config struct {
 // [http.Client] usado nas requisições e a autenticação por token, feita de
 // forma transparente pelo [tokenTransport].
 type Client struct {
-	endpoint string
-	http     *http.Client
+	endpoint  string
+	http      *http.Client
+	transport *tokenTransport
 }
 
 // NewClient cria um [Client] que autentica no WSSEI com usuário e senha,
@@ -80,17 +81,32 @@ type Client struct {
 // 401/403. Caso [Config.OnAuthenticated] esteja definido, o callback é
 // invocado após cada autenticação bem-sucedida (inclusive nas renovações).
 func NewClient(cfg Config) *Client {
-	return &Client{
-		endpoint: apiBaseURL(cfg.BaseURL),
-		http: &http.Client{
-			Transport: &tokenTransport{
-				RoundTripper:    http.DefaultTransport,
-				auth:            NewAuth(cfg.BaseURL),
-				usuario:         cfg.Usuario,
-				senha:           cfg.Senha,
-				orgao:           cfg.Orgao,
-				onAuthenticated: cfg.OnAuthenticated,
-			},
-		},
+	tt := &tokenTransport{
+		RoundTripper:    http.DefaultTransport,
+		auth:            NewAuth(cfg.BaseURL),
+		usuario:         cfg.Usuario,
+		senha:           cfg.Senha,
+		orgao:           cfg.Orgao,
+		onAuthenticated: cfg.OnAuthenticated,
 	}
+	return &Client{
+		endpoint:  apiBaseURL(cfg.BaseURL),
+		http:      &http.Client{Transport: tt},
+		transport: tt,
+	}
+}
+
+// SetUnidade define o id da unidade que será enviada no header `unidade`
+// em todas as requisições subsequentes. O WSSEI usa esse header para
+// selecionar a unidade atual do usuário no contexto da chamada.
+//
+// Passe 0 para remover o header e voltar ao comportamento padrão.
+func (c *Client) SetUnidade(unidade int) {
+	c.transport.setUnidade(unidade)
+}
+
+// Unidade retorna o id da unidade atualmente configurada via
+// [Client.SetUnidade], ou 0 caso nenhuma tenha sido definida.
+func (c *Client) Unidade() int {
+	return c.transport.getUnidade()
 }
