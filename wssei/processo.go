@@ -866,6 +866,7 @@ func (p ListaAssuntosProcessoParams) values() url.Values {
 	return q
 }
 
+// ListarSugestaoAssuntosProcesso Retorna a lista de Sugestão de Assuntos pelo Tipo de Processo.
 func (c Client) ListarSugestaoAssuntosProcesso(ctx context.Context, params ListaAssuntosProcessoParams) ([]ListaSugestaoAssunto, int, error) {
 	if params.TipoProcedimento == 0 {
 		return nil, 0, fmt.Errorf("invalid tipo-procedimento : %d", params.TipoProcedimento)
@@ -904,7 +905,7 @@ func (c Client) ListarSugestaoAssuntosProcesso(ctx context.Context, params Lista
 	return result.Data, total, nil
 }
 
-// CienciasProcesso tipo utilizado funcao ListarCiencasProcesso
+// CienciasProcesso tipo utilizado funcao ListarCiencasProcesso.
 type CienciasProcesso struct {
 	IDProtocolo  string `json:"idProtocolo"`
 	IDAtividade  string `json:"idAtividade"`
@@ -918,7 +919,7 @@ type CienciasProcesso struct {
 	Descricao    string `json:"descricao"`
 }
 
-// ListaCienciaProcessoParams parametros da query da funcao ListarCiencasProcesso
+// ListaCienciaProcessoParams parametros da query da funcao ListarCiencasProcesso.
 type ListaCienciaProcessoParams struct {
 	// Protocolo obrigatorio
 	Protocolo int
@@ -938,6 +939,7 @@ func (p ListaCienciaProcessoParams) values() url.Values {
 	return q
 }
 
+// ListarCiencasProcesso funcao Retorna a lista de Ciências do Processo.
 func (c Client) ListarCiencasProcesso(ctx context.Context, params ListaCienciaProcessoParams) ([]CienciasProcesso, int, error) {
 	if params.Protocolo == 0 {
 		return nil, 0, fmt.Errorf("invalid protocolo : %d", params.Protocolo)
@@ -967,6 +969,68 @@ func (c Client) ListarCiencasProcesso(ctx context.Context, params ListaCienciaPr
 	}
 	if result.Sucesso != true {
 		return nil, 0, fmt.Errorf("consulta failed %d: %s", params.Protocolo, result.Mensagem)
+	}
+
+	total, err := strconv.Atoi(result.Total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error: %w", err)
+	}
+	return result.Data, total, nil
+}
+
+// ListaAcompanhamentosParams parametros da query da funcao ListarCiencasProcesso.
+type ListaAcompanhamentosParams struct {
+	// Protocolo obrigatorio
+	Limit   int
+	Start   int
+	Grupo   int
+	Usuario int
+}
+
+// Converte os parâmetros em [url.Values], omitindo os campos zerados.
+func (p ListaAcompanhamentosParams) values() url.Values {
+	q := make(url.Values)
+	if p.Limit != 0 {
+		q.Set("tipoprocedimento", strconv.Itoa(p.Limit))
+	}
+	if p.Start != 0 {
+		q.Set("tipoprocedimento", strconv.Itoa(p.Start))
+	}
+	if p.Grupo != 0 {
+		q.Set("tipoprocedimento", strconv.Itoa(p.Grupo))
+	}
+	if p.Usuario != 0 {
+		q.Set("tipoprocedimento", strconv.Itoa(p.Usuario))
+	}
+	return q
+}
+
+// ListarMeusAcompanhamentos funcao Retorna a lista de Ciências do Processo.
+func (c Client) ListarMeusAcompanhamentos(ctx context.Context, params ListaAcompanhamentosParams) ([]Processo, int, error) {
+	url := fmt.Sprintf("%s/processo/listar/meus/acompanhamentos", c.endpoint)
+	if q := params.values().Encode(); q != "" {
+		url += "?" + q
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, fmt.Errorf("request error: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result Envelope[[]Processo]
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, 0, fmt.Errorf("decode error: %w", err)
+	}
+	if result.Sucesso != true {
+		return nil, 0, fmt.Errorf("consulta failed: %s", result.Mensagem)
 	}
 
 	total, err := strconv.Atoi(result.Total)
