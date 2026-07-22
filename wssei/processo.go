@@ -1654,3 +1654,52 @@ func (c *Client) AcessoProcesso(ctx context.Context, params AcessoProcessoParams
 
 	return &result.Data, nil
 }
+
+// AcompanharProcessoParams tipo utilizado na funcao AcompanharProcesso.
+type AcompanharProcessoParams struct {
+	// Protocolo obrigatorio
+	Protocolo int
+	// Grupo obrigatorio
+	Grupo      int
+	observacao string
+}
+
+// AcompanharProcesso Realiza o Acompanhamento do Processo.
+func (c *Client) AcompanharProcesso(ctx context.Context, params AcompanharProcessoParams) (*PostProcesso, error) {
+	if params.Protocolo <= 0 {
+		return nil, fmt.Errorf("invalid procedimento: %d", params.Protocolo)
+	}
+	if params.Grupo <= 0 {
+		return nil, fmt.Errorf("invalid Grupo: %d", params.Grupo)
+	}
+
+	bodyBytes, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/processo/acompanhar", c.endpoint)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
