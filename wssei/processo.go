@@ -2122,3 +2122,87 @@ func (c Client) ConsultarSobrestamentoProcesso(ctx context.Context, protocolo in
 
 	return &result.Data, nil
 }
+
+// ListaUnidades tipo utilizado na funcao ListarUnidadesProcesso.
+type ListaUnidades struct {
+	Processo string `json:"processo"`
+	Unidades string `json:"unidades"`
+}
+
+// ListarUnidadesProcesso Retorna as Unidades do Processo.
+func (c Client) ListarUnidadesProcesso(ctx context.Context, protocolo int) (*ListaUnidades, error) {
+	if protocolo <= 0 {
+		return nil, fmt.Errorf("invalid protocolo: %d", protocolo)
+	}
+
+	url := fmt.Sprintf("%s/processo/listar/unidades/%d", c.endpoint, protocolo)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result Envelope[ListaUnidades]
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, fmt.Errorf("decode error: %w", err)
+	}
+	if result.Sucesso != true {
+		return nil, fmt.Errorf("consulta failed: %s", result.Mensagem)
+	}
+
+	return &result.Data, nil
+}
+
+// NivelAcessoPermitido representa os níveis de acesso disponíveis.
+type NivelAcessoPermitido struct {
+	Publico  bool `json:"publico"`
+	Restrito bool `json:"restrito"`
+	Sigiloso bool `json:"sigiloso"`
+}
+
+// ConfiguracaoAcesso tipo utilizado para mapear as regras e níveis de acesso de um processo ou documento.
+type ConfiguracaoAcesso struct {
+	NivelAcessoPermitido         NivelAcessoPermitido `json:"nivelAcessoPermitido"`
+	ObrigatoriedadeHipoteseLegal string               `json:"obrigatoriedadeHipoteseLegal"`
+	ObrigatoriedadeGrauSigilo    string               `json:"obrigatoriedadeGrauSigilo"`
+}
+
+// ListarUnidadesProcesso Retorna as Unidades do Processo.
+func (c Client) ConsultarTipoTemplate(ctx context.Context, id int) (*ConfiguracaoAcesso, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("invalid id: %d", id)
+	}
+
+	url := fmt.Sprintf("%s/processo/tipo/template?%d", c.endpoint, id)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result Envelope[ConfiguracaoAcesso]
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, fmt.Errorf("decode error: %w", err)
+	}
+	if result.Sucesso != true {
+		return nil, fmt.Errorf("consulta failed: %s", result.Mensagem)
+	}
+
+	return &result.Data, nil
+}
