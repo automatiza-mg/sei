@@ -2027,3 +2027,55 @@ func (c *Client) AlterarProcesso(ctx context.Context, protocolo int, params Alte
 
 	return &result.Data, nil
 }
+
+// AlterarProcessoParams tipo utilizado na funcao AgendarRetornoProgramado.
+type AgendarRetornoProgramadoParams struct {
+	// Todos obrigatórios
+	AtividadeEnvio int
+	Unidade        int
+	DtProgramada   string
+}
+
+// AgendarRetornoProgramado Realiza o Agendamento do Retorno Programado de um Processo.
+func (c *Client) AgendarRetornoProgramado(ctx context.Context, params AgendarRetornoProgramadoParams) (*PostProcesso, error) {
+
+	if params.AtividadeEnvio <= 0 {
+		return nil, fmt.Errorf("invalid AtividadeEnvio: %d", params.AtividadeEnvio)
+	}
+	if params.Unidade <= 0 {
+		return nil, fmt.Errorf("invalid Unidade: %d", params.Unidade)
+	}
+	if strings.TrimSpace(params.DtProgramada) == "" {
+		return nil, fmt.Errorf("invalid DtProgramada: %s", params.DtProgramada)
+	}
+
+	bodyBytes, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/processo/agendar/retorno/programado", c.endpoint)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
