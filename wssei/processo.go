@@ -1042,7 +1042,7 @@ func (c Client) ListarMeusAcompanhamentos(ctx context.Context, params ListaMeusA
 
 // ListaAcompanhamentosParams parametros da query da funcao ListarAcompanhamentos.
 type ListaAcompanhamentosParams struct {
-	// Protocolo obrigatorio
+	// Grupo obrigatorio
 	Grupo int
 	Limit int
 	Start int
@@ -1086,6 +1086,113 @@ func (c Client) ListarAcompanhamentos(ctx context.Context, params ListaAcompanha
 	defer resp.Body.Close()
 
 	var result Envelope[[]Processo]
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, 0, fmt.Errorf("decode error: %w", err)
+	}
+	if result.Sucesso != true {
+		return nil, 0, fmt.Errorf("consulta failed: %s", result.Mensagem)
+	}
+
+	total, err := strconv.Atoi(result.Total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error: %w", err)
+	}
+	return result.Data, total, nil
+}
+
+// ListaCredenciamentoParams parametros da query da funcao ListarAcompanhamentos.
+type ListaCredenciamentoParams struct {
+	// Procedimento obrigatorio
+	Procedimento int
+	Limit        int
+	Start        int
+}
+
+// Converte os parâmetros em [url.Values], omitindo os campos zerados.
+func (p ListaCredenciamentoParams) values() url.Values {
+	q := make(url.Values)
+	if p.Limit != 0 {
+		q.Set("tipoprocedimento", strconv.Itoa(p.Limit))
+	}
+	if p.Start != 0 {
+		q.Set("tipoprocedimento", strconv.Itoa(p.Start))
+	}
+	return q
+}
+
+// ListaCredenciamento tipo utilizado na funcao ListarCredenciamentoProcesso
+type ListaCredenciamento struct {
+	Atividade         string `json:"atividade"`
+	SiglaUsuario      string `json:"siglaUsuario"`
+	SiglaUnidade      string `json:"siglaUnidade"`
+	NomeUsuario       string `json:"nomeUsuario"`
+	DescricaoUnidade  string `json:"descricaoUnidade"`
+	DataAbertura      string `json:"dataAbertura"`
+	CredencialCassada bool   `json:"credencialCassada"`
+	DataCassacao      string `json:"dataCassacao"`
+}
+
+// ListarCredenciamentoProcesso Retorna a lista de Usuário com Credênciais de Acesso ao Processo.
+func (c Client) ListarCredenciamentoProcesso(ctx context.Context, params ListaCredenciamentoParams) ([]ListaCredenciamento, int, error) {
+	if params.Procedimento == 0 {
+		return nil, 0, fmt.Errorf("invalid Procedimento: %d", params.Procedimento)
+	}
+
+	url := fmt.Sprintf("%s/processo/%d/credenciamento/listar", c.endpoint, params.Procedimento)
+	if q := params.values().Encode(); q != "" {
+		url += "?" + q
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, fmt.Errorf("request error: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result Envelope[[]ListaCredenciamento]
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, 0, fmt.Errorf("decode error: %w", err)
+	}
+	if result.Sucesso != true {
+		return nil, 0, fmt.Errorf("consulta failed: %s", result.Mensagem)
+	}
+
+	total, err := strconv.Atoi(result.Total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error: %w", err)
+	}
+	return result.Data, total, nil
+}
+
+// ConsultarAtribuicaoProcesso Retorna os dados da Atribuição do Processo.
+func (c Client) ConsultarAtribuicaoProcesso(ctx context.Context, protocolo int) (*ProcessoUsuarioAtribuido, int, error) {
+	if protocolo == 0 {
+		return nil, 0, fmt.Errorf("invalid protocolo: %d", protocolo)
+	}
+
+	url := fmt.Sprintf("%s/processo/%d/consultar/atribuicao", c.endpoint, protocolo)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, fmt.Errorf("request error: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result Envelope[*ProcessoUsuarioAtribuido]
 
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
