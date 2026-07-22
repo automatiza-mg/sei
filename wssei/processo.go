@@ -1873,3 +1873,157 @@ func (c *Client) RemoverAtribuicaoProcesso(ctx context.Context, protocolo int) (
 
 	return &result.Data, nil
 }
+
+// CancelarSobrestamentoProcesso Cancela o Sobrestamento do Processo.
+func (c *Client) CancelarSobrestamentoProcesso(ctx context.Context, protocolo int) (*PostProcesso, error) {
+	if protocolo <= 0 {
+		return nil, fmt.Errorf("invalid protocolo: %d", protocolo)
+	}
+	url := fmt.Sprintf("%s/processo/%d/cancelar/sobrestamento", c.endpoint, protocolo)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
+
+// ExcluirAcompanhamento Exclui o Acompanhamento de um Processo.
+func (c *Client) ExcluirAcompanhamento(ctx context.Context, acompanhamento int) (*PostProcesso, error) {
+	if acompanhamento <= 0 {
+		return nil, fmt.Errorf("invalid protocolo: %d", acompanhamento)
+	}
+	url := fmt.Sprintf("%s/processo/acompanhamento/%d/excluir", c.endpoint, acompanhamento)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
+
+// DarCienciaProcesso Da Ciencia no Processo.
+func (c *Client) DarCienciaProcesso(ctx context.Context, procedimento int) (*PostProcesso, error) {
+	if procedimento <= 0 {
+		return nil, fmt.Errorf("invalid protocolo: %d", procedimento)
+	}
+	url := fmt.Sprintf("%s/processo/%d/ciencia", c.endpoint, procedimento)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
+
+// AlterarProcessoParams tipo utilizado na funcao AlterarProcesso.
+type AlterarProcessoParams struct {
+	Assuntos      string
+	Interessados  string
+	Especificacao string
+	Observacao    string
+	// IDTipoProcesso obrigatorio
+	IDTipoProcesso int
+	// NivelACesso obrigatorio
+	NivelACesso     int
+	IDHipoteseLegal int
+	// GrauSigilo obrigatorio
+	GrauSigilo string
+}
+
+// AlterarProcesso Realiza a edição de um Processo.
+func (c *Client) AlterarProcesso(ctx context.Context, protocolo int, params AlterarProcessoParams) (*PostProcesso, error) {
+	if protocolo <= 0 {
+		return nil, fmt.Errorf("invalid protocolo: %d", protocolo)
+	}
+	if params.IDTipoProcesso <= 0 {
+		return nil, fmt.Errorf("invalid IDTipoProcesso: %d", params.IDTipoProcesso)
+	}
+	if params.NivelACesso <= 0 {
+		return nil, fmt.Errorf("invalid NivelACesso: %d", params.NivelACesso)
+	}
+	if strings.TrimSpace(params.GrauSigilo) == "" {
+		return nil, fmt.Errorf("invalid GrauSigilo: %s", params.GrauSigilo)
+	}
+
+	bodyBytes, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/processo/%d/alterar", c.endpoint, protocolo)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
