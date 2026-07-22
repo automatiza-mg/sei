@@ -1295,14 +1295,14 @@ type SobrestoParams struct {
 	Motivo string
 }
 
-// Sobresto tipo utilizado na funcao SobrestarProcesso.
-type Sobresto struct {
+// PostProcesso tipo utilizado na funcao SobrestarProcesso.
+type PostProcesso struct {
 	Mensagem string `json:"mensagem"`
 	Total    string `json:"total"`
 }
 
 // SobrestarProcesso Realiza o Sobrestamento do Processo.
-func (c *Client) SobrestarProcesso(ctx context.Context, params SobrestoParams) (*Sobresto, error) {
+func (c *Client) SobrestarProcesso(ctx context.Context, params SobrestoParams) (*PostProcesso, error) {
 	if params.Protocolo <= 0 {
 		return nil, fmt.Errorf("invalid protocolo: %d", params.Protocolo)
 	}
@@ -1333,7 +1333,58 @@ func (c *Client) SobrestarProcesso(ctx context.Context, params SobrestoParams) (
 		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
 
-	var result Envelope[Sobresto]
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
+
+// SobrestoParams tipo utilizado na funcao SobrestarProcesso.
+type AcessoParams struct {
+	// Todos sao obrigatorios
+	Procedimento int
+	Unidade      int
+	Usuario      int
+}
+
+// SobrestarProcesso Realiza o Sobrestamento do Processo.
+func (c *Client) ConcederAcesso(ctx context.Context, params AcessoParams) (*PostProcesso, error) {
+	if params.Procedimento <= 0 {
+		return nil, fmt.Errorf("invalid Procedimento: %d", params.Procedimento)
+	}
+	if params.Unidade <= 0 {
+		return nil, fmt.Errorf("invalid Unidade: %d", params.Unidade)
+	}
+	if params.Usuario <= 0 {
+		return nil, fmt.Errorf("invalid Usuario: %d", params.Usuario)
+	}
+
+	bodyBytes, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/processo/%d/credenciamento/conceder", c.endpoint, params.Procedimento)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response error: %w", err)
 	}
