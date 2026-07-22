@@ -1288,8 +1288,6 @@ func (c Client) ConsultarAcompanhamentosProcesso(ctx context.Context, protocolo 
 
 // SobrestoParams tipo utilizado na funcao SobrestarProcesso.
 type SobrestoParams struct {
-	// Protocolo  obrigatorio
-	Protocolo        int
 	ProtocoloDestino int
 	// Motivo obrigatorio
 	Motivo string
@@ -1302,9 +1300,9 @@ type PostProcesso struct {
 }
 
 // SobrestarProcesso Realiza o Sobrestamento do Processo.
-func (c *Client) SobrestarProcesso(ctx context.Context, params SobrestoParams) (*PostProcesso, error) {
-	if params.Protocolo <= 0 {
-		return nil, fmt.Errorf("invalid protocolo: %d", params.Protocolo)
+func (c *Client) SobrestarProcesso(ctx context.Context, protocolo int, params SobrestoParams) (*PostProcesso, error) {
+	if protocolo <= 0 {
+		return nil, fmt.Errorf("invalid protocolo: %d", protocolo)
 	}
 	if strings.TrimSpace(params.Motivo) == "" {
 		return nil, fmt.Errorf("Motivo required")
@@ -1315,7 +1313,7 @@ func (c *Client) SobrestarProcesso(ctx context.Context, params SobrestoParams) (
 		return nil, fmt.Errorf("marshal error: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/processo/%d/sobrestar/processo", c.endpoint, params.Protocolo)
+	url := fmt.Sprintf("%s/processo/%d/sobrestar/processo", c.endpoint, protocolo)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
 	if err != nil {
@@ -1344,15 +1342,14 @@ func (c *Client) SobrestarProcesso(ctx context.Context, params SobrestoParams) (
 // AcessoParams tipo utilizado na funcao ConcederAcesso.
 type AcessoParams struct {
 	// Todos sao obrigatorios
-	Procedimento int
-	Unidade      int
-	Usuario      int
+	Unidade int
+	Usuario int
 }
 
 // ConcederAcesso Concede Acesso a um Usuário no Processo.
-func (c *Client) ConcederAcesso(ctx context.Context, params AcessoParams) (*PostProcesso, error) {
-	if params.Procedimento <= 0 {
-		return nil, fmt.Errorf("invalid Procedimento: %d", params.Procedimento)
+func (c *Client) ConcederAcesso(ctx context.Context, procedimento int, params AcessoParams) (*PostProcesso, error) {
+	if procedimento <= 0 {
+		return nil, fmt.Errorf("invalid Procedimento: %d", procedimento)
 	}
 	if params.Unidade <= 0 {
 		return nil, fmt.Errorf("invalid Unidade: %d", params.Unidade)
@@ -1366,7 +1363,7 @@ func (c *Client) ConcederAcesso(ctx context.Context, params AcessoParams) (*Post
 		return nil, fmt.Errorf("marshal error: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/processo/%d/credenciamento/conceder", c.endpoint, params.Procedimento)
+	url := fmt.Sprintf("%s/processo/%d/credenciamento/conceder", c.endpoint, procedimento)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
 	if err != nil {
@@ -1401,6 +1398,107 @@ func (c *Client) RenunciarAcesso(ctx context.Context, procedimento int) (*PostPr
 	url := fmt.Sprintf("%s/processo/%d/credenciamento/renunciar", c.endpoint, procedimento)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
+
+// CassarAcessoParams tipo utilizado na funcao CassarAcesso.
+type CassarAcessoParams struct {
+	// Todos sao obrigatorios
+	Atividade int
+}
+
+// CassarAcesso Inativa o Acesso de um Usuário a um Processo
+func (c *Client) CassarAcesso(ctx context.Context, procedimento int, params CassarAcessoParams) (*PostProcesso, error) {
+	if procedimento <= 0 {
+		return nil, fmt.Errorf("invalid Procedimento: %d", procedimento)
+	}
+	if params.Atividade <= 0 {
+		return nil, fmt.Errorf("invalid Unidade: %d", params.Atividade)
+	}
+
+	bodyBytes, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/processo/%d/credenciamento/cassar", c.endpoint, procedimento)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result Envelope[PostProcesso]
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return &result.Data, nil
+}
+
+// EniviarProcessoParams tipo utilizado na funcao EnviarProcesso.
+type EniviarProcessoParams struct {
+	// NumeroProcesso obrigatorio
+	NumeroProcesso string
+	// UnidadesDestino obrigatorio
+	UnidadesDestino               string
+	SinManterAbertoUnidade        string
+	SinRemoverAnotacao            string
+	SinEnviarEmailNotificacao     string
+	DataRetornoProgramado         string
+	DiasRetornoProgramado         string
+	SinDiasUteisRetornoProgramado string
+	SinReabrir                    string
+}
+
+// EnviarProcesso Envia o Processo para outras Unidades
+func (c *Client) EnviarProcesso(ctx context.Context, params EniviarProcessoParams) (*PostProcesso, error) {
+	if strings.TrimSpace(params.NumeroProcesso) == "" {
+		return nil, fmt.Errorf("NumeroProcesso required")
+	}
+	if strings.TrimSpace(params.UnidadesDestino) == "" {
+		return nil, fmt.Errorf("UnidadesDestino required")
+	}
+
+	bodyBytes, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/processo/enviar", c.endpoint)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("request error: %w", err)
 	}
