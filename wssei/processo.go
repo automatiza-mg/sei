@@ -2079,3 +2079,46 @@ func (c *Client) AgendarRetornoProgramado(ctx context.Context, params AgendarRet
 
 	return &result.Data, nil
 }
+
+// ConsultaSobrestamento tipo utilizado na funcao ConsultarSobrestamentoProcesso.
+type ConsultaSobrestamento struct {
+	IDAtividade      string `json:"idAtividade"`
+	IDProtocolo      string `json:"idProtocolo"`
+	DthAbertura      string `json:"dthAbertura"`
+	SinInicial       string `json:"sinInicial"`
+	DtaPrazo         string `json:"dtaPrazo"`
+	TipoVisualizacao string `json:"tipoVisualizacao"`
+	DthConclusao     string `json:"dthConclusao"`
+}
+
+// ConsultarSobrestamentoProcesso Retorna os dados de Sobrestamento do Processo.
+func (c Client) ConsultarSobrestamentoProcesso(ctx context.Context, protocolo int) (*ConsultaSobrestamento, error) {
+	if protocolo <= 0 {
+		return nil, fmt.Errorf("invalid protocolo: %d", protocolo)
+	}
+
+	url := fmt.Sprintf("%s/processo/listar/sobrstamento/%d", c.endpoint, protocolo)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("response error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result Envelope[ConsultaSobrestamento]
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return nil, fmt.Errorf("decode error: %w", err)
+	}
+	if result.Sucesso != true {
+		return nil, fmt.Errorf("consulta failed: %s", result.Mensagem)
+	}
+
+	return &result.Data, nil
+}
