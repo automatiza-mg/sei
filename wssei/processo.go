@@ -971,7 +971,7 @@ func (c Client) ListarCiencasProcesso(ctx context.Context, params ListaCienciaPr
 		return nil, 0, fmt.Errorf("consulta failed %d: %s", params.Protocolo, result.Mensagem)
 	}
 
-	total, err := strconv.Atoi(result.Total)
+	total, err := result.getTotal()
 	if err != nil {
 		return nil, 0, fmt.Errorf("error: %w", err)
 	}
