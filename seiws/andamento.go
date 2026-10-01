@@ -33,7 +33,7 @@ func (c *Client) ListarAndamentos(ctx context.Context, idUnidade, protocolo stri
 		IdentificacaoServico:  c.cfg.IdentificacaoServico,
 		IDUnidade:             idUnidade,
 		ProtocoloProcedimento: protocolo,
-		SinRetornarAtributos:  "N",
+		SinRetornarAtributos:  "S",
 		Tarefas:               tarefas,
 	})
 }
