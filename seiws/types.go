@@ -27,12 +27,21 @@ type Usuario struct {
 
 // Andamento é um andamento (movimentação) registrado em um processo do SEI.
 type Andamento struct {
-	IDAndamento    string  `xml:"IdAndamento" json:"id_andamento,omitempty"`
-	IDTarefa       string  `xml:"IdTarefa" json:"id_tarefa,omitempty"`
-	IDTarefaModulo string  `xml:"IdTarefaModulo" json:"id_tarefa_modulo,omitempty"`
-	Descricao      string  `xml:"Descricao" json:"descricao"`
-	DataHora       string  `xml:"DataHora" json:"data_hora"`
-	Unidade        Unidade `xml:"Unidade" json:"unidade"`
+	IDAndamento    string              `xml:"IdAndamento" json:"id_andamento,omitempty"`
+	IDTarefa       string              `xml:"IdTarefa" json:"id_tarefa,omitempty"`
+	IDTarefaModulo string              `xml:"IdTarefaModulo" json:"id_tarefa_modulo,omitempty"`
+	Descricao      string              `xml:"Descricao" json:"descricao"`
+	DataHora       string              `xml:"DataHora" json:"data_hora"`
+	Unidade        Unidade             `xml:"Unidade" json:"unidade"`
+	Usuario        Usuario             `xml:"Usuario" json:"usuario"`
+	Atributos      []AtributoAndamento `xml:"Atributos>item" json:"atributos"`
+}
+
+// AtributoAndamento é um atributo associado a um andamento do SEI.
+type AtributoAndamento struct {
+	Nome     string `xml:"Nome" json:"nome"`
+	Valor    string `xml:"Valor" json:"valor"`
+	IDOrigem string `xml:"IdOrigem" json:"id_origem"`
 }
 
 // UnidadeElaboradora é a unidade do SEI responsável pela elaboração do
