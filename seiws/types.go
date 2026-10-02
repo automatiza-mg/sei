@@ -37,6 +37,54 @@ type Andamento struct {
 	Atributos      []AtributoAndamento `xml:"Atributos>item" json:"atributos"`
 }
 
+// AndamentoMarcador é um registro do histórico de associação ou remoção de um
+// marcador em um processo.
+type AndamentoMarcador struct {
+	IDAndamentoMarcador string    `xml:"IdAndamentoMarcador" json:"id_andamento_marcador"`
+	Texto               string    `xml:"Texto" json:"texto"`
+	DataHora            string    `xml:"DataHora" json:"data_hora"`
+	Usuario             Usuario   `xml:"Usuario" json:"usuario"`
+	Marcador            *Marcador `xml:"Marcador" json:"marcador"`
+}
+
+// UnmarshalXML preserva Marcador como nil quando o SEI retorna xsi:nil="true"
+// para um andamento de remoção. encoding/xml não interpreta xsi:nil
+// automaticamente.
+func (a *AndamentoMarcador) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var data struct {
+		IDAndamentoMarcador string  `xml:"IdAndamentoMarcador"`
+		Texto               string  `xml:"Texto"`
+		DataHora            string  `xml:"DataHora"`
+		Usuario             Usuario `xml:"Usuario"`
+		Marcador            *struct {
+			Nil        bool   `xml:"nil,attr"`
+			IDMarcador string `xml:"IdMarcador"`
+			Nome       string `xml:"Nome"`
+			Icone      string `xml:"Icone"`
+			SinAtivo   string `xml:"SinAtivo"`
+		} `xml:"Marcador"`
+	}
+	if err := d.DecodeElement(&data, &start); err != nil {
+		return err
+	}
+
+	*a = AndamentoMarcador{
+		IDAndamentoMarcador: data.IDAndamentoMarcador,
+		Texto:               data.Texto,
+		DataHora:            data.DataHora,
+		Usuario:             data.Usuario,
+	}
+	if data.Marcador != nil && !data.Marcador.Nil {
+		a.Marcador = &Marcador{
+			IDMarcador: data.Marcador.IDMarcador,
+			Nome:       data.Marcador.Nome,
+			Icone:      data.Marcador.Icone,
+			SinAtivo:   data.Marcador.SinAtivo,
+		}
+	}
+	return nil
+}
+
 // AtributoAndamento é um atributo associado a um andamento do SEI.
 type AtributoAndamento struct {
 	Nome     string `xml:"Nome" json:"nome"`

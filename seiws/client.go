@@ -61,9 +61,11 @@ func makeSoapError(status int, r io.Reader) error {
 // doReq monta o envelope SOAP a partir de Req, envia para c.cfg.URL e
 // decodifica a resposta em Res.
 func doReq[Req any, Res any](ctx context.Context, c *Client, req Req) (*Res, error) {
-	body, err := xml.Marshal(soap.Envelope[Req]{
-		Body: soap.Body[Req]{
-			Content: req,
+	body, err := xml.Marshal(soap.Envelope[soap.Encoded[Req]]{
+		Body: soap.Body[soap.Encoded[Req]]{
+			Content: soap.Encoded[Req]{
+				Value: req,
+			},
 		},
 	})
 	if err != nil {
